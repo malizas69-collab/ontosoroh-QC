@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONT QC — Greenbean Grader</title>
+<style>
+:root {
+  --bg:      #FFFFFF;
+  --s1:      #F7F5F1;
+  --s2:      #EFEBE2;
+  --bdr:     #DCD4C4;
+  --acc:     #B5760A;
+  --txt:     #2A2015;
+  --mut:     #7A6A57;
+  --grn:     #16A34A;
+  --ylw:     #CA8A04;
+  --org:     #EA580C;
+  --red:     #DC2626;
+  --mono:    'Courier New', Courier, monospace;
+  --r:       8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.hdr {
+  background: var(--s1);
+  border-bottom: 1px solid var(--bdr);
+  padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.hdr-title { font: 700 12px var(--mono); color: var(--acc); letter-spacing: .1em; }
+.hdr-sub   { font-size: 10px; color: var(--mut); margin-top: 1px; }
+
+/* ── Standard toggle ── */
+.toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--bdr);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.toggle button {
+  padding: 5px 14px;
+  background: none; border: none;
+  color: var(--mut);
+  font: 700 11px var(--mono);
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: all .15s;
+}
+.toggle button.on { background: var(--acc); color: #000; }
+
+/* ── Layout ── */
+.main { max-width: 680px; margin: 0 auto; padding: 13px; }
+
+/* ── Card ── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.ch {
+  background: var(--s2);
+  border-bottom: 1px solid var(--bdr);
+  padding: 7px 13px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ch + .ch { border-top: 1px solid var(--bdr); }
+.clbl {
+  font: 700 9px var(--mono);
+  color: var(--mut);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.cbdg {
+  font: 700 9px var(--mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.c-red { background: #7f1d1d22; color: var(--red);  border: 1px solid #7f1d1d44; }
+.c-yel { background: #78350f18; color: #92400E; border: 1px solid #78350f44; }
+.cr    { margin-left: auto; font: 10px var(--mono); color: var(--mut); }
+.cb    { padding: 12px; }
+
+/* ── Form grid ── */
+.fg { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.fc { display: flex; flex-direction: column; gap: 4px; }
+.fc.full { grid-column: 1 / -1; }
+.fl {
+  font: 600 9px sans-serif;
+  color: var(--mut);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+input.fi, select.fi {
+  background: var(--bg);
+  border: 1px solid var(--bdr);
+  border-radius: 5px;
+  color: var(--txt);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color .15s;
+}
+select.fi {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238A7560'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  padding-right: 26px;
+}
+input.fi:focus, select.fi:focus { outline: none; border-color: var(--acc); }
+
+.ka-note {
+  grid-column: 1 / -1;
+  font: 11px var(--mono);
+  padding: 5px 9px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  display: none;
+}
+.ka-note.warn { display: block; background: #7c2d1222; color: var(--org); border-color: #7c2d1244; }
+.ka-note.ok   { display: block; background: #14532d22; color: var(--grn); border-color: #14532d44; }
+
+/* ── Defect table ── */
+.dt { width: 100%; border-collapse: collapse; }
+.dt th {
+  font: 700 9px var(--mono);
+  color: var(--mut);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--bdr);
+  text-align: left;
+}
+.dt th.tc { text-align: center; }
+.dt th.tr { text-align: right;  }
+.dt td    { padding: 5px 10px; border-bottom: 1px solid #30200C55; vertical-align: middle; }
+.dt tr:last-child td { border-bottom: none; }
+
+.dn   { font-size: 13px; }
+.de   { font-size: 10px; color: var(--mut); margin-top: 1px; }
+.dr   { color: var(--acc); }
+.dcnt {
+  width: 58px;
+  background: var(--bg);
+  border: 1px solid var(--bdr);
+  border-radius: 5px;
+  color: var(--txt);
+  padding: 6px 4px;
+  font: 14px var(--mono);
+  text-align: center;
+  display: block; margin: 0 auto;
+  -moz-appearance: textfield;
+}
+.dcnt::-webkit-inner-spin-button,
+.dcnt::-webkit-outer-spin-button { display: none; }
+.dcnt:focus { outline: none; border-color: var(--acc); }
+.dv   { font: 13px var(--mono); color: var(--mut); text-align: right; }
+.dv.on{ color: var(--txt); }
+
+.strow {
+  display: flex; justify-content: space-between;
+  padding: 7px 10px;
+  background: var(--s2);
+  border-top: 1px solid var(--bdr);
+  font: 700 12px var(--mono);
+}
+.stl { color: var(--mut); }
+.stv { color: var(--txt); }
+
+/* ── Result panel ── */
+.rrow { display: flex; gap: 10px; }
+.rbox {
+  background: var(--bg);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r);
+  padding: 13px;
+  transition: border-color .3s;
+}
+.rbox.score { flex: 1; text-align: center; }
+.rbox.grade { flex: 2; }
+.rl   { font: 700 9px var(--mono); color: var(--mut); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.rnum { font: 700 30px/1 var(--mono); color: var(--txt); transition: color .3s; }
+.ru   { font-size: 10px; color: var(--mut); margin-top: 3px; }
+.rg   { font: 700 20px var(--mono); transition: color .3s; }
+.rd   { font-size: 11px; color: var(--mut); margin-top: 5px; line-height: 1.4; }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: var(--s2); border-bottom: 1px solid var(--bdr); }
+.tab {
+  padding: 10px 16px;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--mut);
+  font: 600 12px sans-serif; font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tab.on { color: var(--acc); border-bottom-color: var(--acc); }
+
+/* ── Buttons ── */
+.brow { display: flex; gap: 8px; margin-bottom: 10px; }
+.btn {
+  padding: 10px 16px;
+  border: none; border-radius: 6px;
+  font: 700 13px sans-serif; font-family: inherit;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn:active { opacity: .65; }
+.btn.pr { background: var(--acc); color: #000; flex: 1; }
+.btn.sc { background: var(--s2); color: var(--txt); border: 1px solid var(--bdr); }
+.btn.dg { background: #7f1d1d; color: #fff; }
+
+/* ── History ── */
+.hempty { padding: 24px; text-align: center; color: var(--mut); font-size: 12px; }
+.hi {
+  padding: 9px 13px;
+  border-bottom: 1px solid #30200C55;
+  display: flex; align-items: center; gap: 10px;
+}
+.hi:last-child { border-bottom: none; }
+.hm { flex: 1; min-width: 0; }
+.hstd  { font: 10px var(--mono); color: var(--mut); }
+.hmain { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hdet  { font-size: 11px; color: var(--mut); }
+.hacc  { font-size: 11px; color: var(--acc); }
+.hbdg {
+  font: 700 11px var(--mono);
+  padding: 3px 7px; border-radius: 4px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.hdel { background: none; border: none; color: var(--mut); cursor: pointer; font-size: 17px; padding: 2px 6px; flex-shrink: 0; }
+.hdel:hover { color: var(--red); }
+
+@media (max-width: 480px) {
+  .rrow { flex-direction: column; }
+  .rnum { font-size: 26px; }
+  .rg   { font-size: 17px; }
+  .fg   { grid-template-columns: 1fr; }
+  .fc.full { grid-column: 1; }
+  .ka-note { grid-column: 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="hdr">
+  <div>
+    <div class="hdr-title">ONT · QC GREENBEAN</div>
+    <div class="hdr-sub">Green Bean Defect Grader · v1.0</div>
+  </div>
+  <div class="toggle">
+    <button class="on" onclick="setStd('sca')">SCA</button>
+    <button onclick="setStd('sni')">SNI</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ── Tabs ── -->
+  <div class="card">
+    <div class="tabs">
+      <button class="tab on" onclick="showTab('form')">+ Input Baru</button>
+      <button class="tab" id="tab-hist-btn" onclick="showTab('hist')">Riwayat</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ FORM TAB ═══════════ -->
+  <div id="panel-form">
+
+    <!-- Identitas Sampel -->
+    <div class="card">
+      <div class="ch"><span class="clbl">Identitas Sampel</span></div>
+      <div class="cb">
+        <div class="fg">
+
+          <div class="fc full">
+            <label class="fl">Nama Mitra</label>
+            <input class="fi" id="mitra" type="text" placeholder="Nama petani / kelompok tani">
+          </div>
+
+          <div class="fc full">
+            <label class="fl">Origin</label>
+            <select class="fi" id="origin">
+              <option value="">Pilih origin...</option>
+              <optgroup label="Jawa">
+                <option>Magelang</option><option>Temanggung</option><option>Dieng</option><option>Ijen</option>
+              </optgroup>
+              <optgroup label="Sumatera">
+                <option>Gayo (Aceh)</option><option>Mandailing</option><option>Lintong</option>
+                <option>Kerinci</option><option>Rejang Lebong</option><option>Pagar Alam</option>
+              </optgroup>
+              <optgroup label="Sulawesi">
+                <option>Toraja</option><option>Enrekang</option><option>Gowa</option>
+              </optgroup>
+              <optgroup label="Flores">
+                <option>Flores Bajawa</option><option>Flores Ende</option><option>Flores Manggarai</option>
+              </optgroup>
+              <optgroup label="Papua &amp; Lainnya">
+                <option>Wamena</option><option>Timor Leste</option><option>Lainnya</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="fc">
+            <label class="fl">Jenis Kopi</label>
+            <select class="fi" id="jenis">
+              <option value="">Pilih...</option>
+              <option>Arabika</option><option>Robusta</option><option>Liberika</option>
+            </select>
+          </div>
+
+          <div class="fc">
+            <label class="fl">Tahun Panen</label>
+            <select class="fi" id="tahun"></select>
+          </div>
+
+          <div class="fc full">
+            <label class="fl">Pascapanen</label>
+            <select class="fi" id="pasca">
+              <option value="">Pilih proses...</option>
+              <option>Natural / Full Dry</option>
+              <option>Washed / Wet Process</option>
+              <option>Honey / Pulped Natural</option>
+              <option>Semi-Washed</option>
+              <option>Wet Hulled (Giling Basah)</option>
+              <option>Anaerobic Natural</option>
+              <option>Anaerobic Washed</option>
+              <option>Anaerobic Honey</option>
+              <option>Lainnya</option>
+            </select>
+          </div>
+
+          <div class="fc">
+            <label class="fl">Kadar Air (%)</label>
+            <input class="fi" id="ka" type="number" step="0.1" min="0" max="30" placeholder="cth: 11.5" oninput="calc()">
+          </div>
+          <div class="fc" style="justify-content:flex-end;align-items:flex-end">
+            <span style="font:10px var(--mono);color:var(--mut);padding-bottom:9px" id="ka-ref">SCA: 9–13% · SNI: ≤12.5%</span>
+          </div>
+
+          <div class="ka-note" id="ka-note"></div>
+
+          <div class="fc">
+            <label class="fl">Water Activity (Aw)</label>
+            <input class="fi" id="aw" type="number" step="0.01" min="0" max="1" placeholder="cth: 0.58" oninput="calc()">
+          </div>
+          <div class="fc" style="justify-content:flex-end;align-items:flex-end">
+            <span style="font:10px var(--mono);color:var(--mut);padding-bottom:9px" id="aw-ref">Ideal: 0.55–0.65</span>
+          </div>
+
+          <div class="ka-note" id="aw-note"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Defect Tables -->
+    <div class="card">
+      <!-- Cacat Primer -->
+      <div class="ch">
+        <span class="clbl" id="lbl-p">Cacat Primer</span>
+        <span class="cbdg c-red" id="bdg-p">Cat. 1</span>
+        <span class="cr" id="smpl-lbl">Sampel 350g</span>
+      </div>
+      <table class="dt">
+        <thead><tr><th>Jenis Cacat</th><th class="tc">Jumlah</th><th class="tr">Nilai</th></tr></thead>
+        <tbody id="tb-p"></tbody>
+      </table>
+      <div class="strow">
+        <span class="stl" id="stl-p">Total Cacat Primer</span>
+        <span class="stv" id="stv-p">0.00</span>
+      </div>
+
+      <!-- Cacat Sekunder -->
+      <div class="ch">
+        <span class="clbl" id="lbl-s">Cacat Sekunder</span>
+        <span class="cbdg c-yel" id="bdg-s">Cat. 2</span>
+      </div>
+      <table class="dt">
+        <thead><tr><th>Jenis Cacat</th><th class="tc">Jumlah</th><th class="tr">Nilai</th></tr></thead>
+        <tbody id="tb-s"></tbody>
+      </table>
+      <div class="strow">
+        <span class="stl" id="stl-s">Total Cacat Sekunder</span>
+        <span class="stv" id="stv-s">0.00</span>
+      </div>
+    </div>
+
+    <!-- Hasil Grading -->
+    <div class="card">
+      <div class="ch"><span class="clbl">Hasil Grading</span></div>
+      <div class="cb">
+        <div class="rrow">
+          <div class="rbox score">
+            <div class="rl">Total Defect</div>
+            <div class="rnum" id="r-tot">0.00</div>
+            <div class="ru"  id="r-unit">full defects</div>
+          </div>
+          <div class="rbox grade" id="grade-box">
+            <div class="rl">Grade</div>
+            <div class="rg" id="r-grade" style="color:var(--mut)">—</div>
+            <div class="rd" id="r-desc">Belum ada data cacat</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trase Berat Sampel -->
+    <div class="card">
+      <div class="ch">
+        <span class="clbl">Trase Berat Sampel</span>
+        <span class="cr">Opsional</span>
+      </div>
+      <div class="cb">
+        <div class="fg" style="margin-bottom:12px">
+          <div class="fc">
+            <label class="fl">Berat Sampel (g)</label>
+            <input class="fi" id="wt-sample" type="number" step="1" min="0" oninput="calc()">
+          </div>
+          <div class="fc">
+            <label class="fl">Berat Kopi Cacat (g)</label>
+            <input class="fi" id="wt-defect" type="number" step="0.1" min="0" placeholder="cth: 12.5" oninput="calc()">
+          </div>
+        </div>
+        <div class="rrow">
+          <div class="rbox score">
+            <div class="rl">Berat Bersih</div>
+            <div class="rnum" id="wt-clean" style="font-size:22px">—</div>
+            <div class="ru">gram</div>
+          </div>
+          <div class="rbox score">
+            <div class="rl">% Cacat (Berat)</div>
+            <div class="rnum" id="wt-pct" style="font-size:22px">—</div>
+            <div class="ru">dari sampel</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="brow">
+      <button class="btn sc" onclick="resetForm()">Reset</button>
+      <button class="btn pr" id="save-btn" onclick="save()">Simpan ke Riwayat</button>
+    </div>
+
+  </div><!-- /panel-form -->
+
+  <!-- ═══════════ HISTORY TAB ═══════════ -->
+  <div id="panel-hist" style="display:none">
+    <div class="card" id="hist-list"></div>
+    <div class="brow" id="hist-acts" style="display:none">
+      <button class="btn sc" onclick="exportCSV()">Export CSV</button>
+      <button class="btn dg" onclick="clearAll()">Hapus Semua</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════
+// DEFECT DEFINITIONS
+// ═══════════════════════════════════════════
+
+const DEFS = {
+  sca: {
+    sample: 350,
+    scoreUnit: 'full defects',
+    ka: [9, 13],
+    primary: [
+      { id:'full_black',   name:'Hitam Penuh',         en:'Full Black',           div:1  },
+      { id:'full_sour',    name:'Asam Penuh',           en:'Full Sour',            div:1  },
+      { id:'dried_cherry', name:'Gelondong Kering',     en:'Dried Cherry / Pod',   div:1  },
+      { id:'fungal',       name:'Jamur',                en:'Fungal Damage',        div:1  },
+      { id:'foreign',      name:'Benda Asing',          en:'Foreign Matter',       div:1  },
+      { id:'sev_insect',   name:'Berlubang ≥5 lubang',  en:'Severe Insect Damage', div:5  },
+    ],
+    secondary: [
+      { id:'part_black',   name:'Hitam Sebagian',       en:'Partial Black',        div:3  },
+      { id:'part_sour',    name:'Asam Sebagian',         en:'Partial Sour',         div:3  },
+      { id:'parchment',    name:'Kulit Tanduk',          en:'Parchment',            div:5  },
+      { id:'floater',      name:'Biji Mengapung',        en:'Floater / Bleached',   div:5  },
+      { id:'immature',     name:'Biji Muda',             en:'Immature / Unripe',    div:5  },
+      { id:'withered',     name:'Keriput',               en:'Withered',             div:5  },
+      { id:'shell',        name:'Cangkang',              en:'Shell',                div:5  },
+      { id:'broken',       name:'Pecah / Retak',         en:'Broken / Chipped',     div:5  },
+      { id:'hull',         name:'Kulit Kopi',            en:'Hull / Husk',          div:5  },
+      { id:'sl_insect',    name:'Berlubang 1–4 lubang',  en:'Slight Insect Damage', div:10 },
+    ],
+    grade(p, t) {
+      if (p === 0 && t <= 5)  return { g:'Specialty',      c:'#16A34A', d:'SCA Specialty — 0 Cat.1 defects, ≤5 full defects total (350g)' };
+      if (p === 0 && t <= 8)  return { g:'Premium',        c:'#65A30D', d:'SCA Premium — 0 Cat.1 defects, ≤8 full defects total (350g)' };
+      if (t <= 23)            return { g:'Exchange',       c:'#CA8A04', d:'SCA Exchange Grade — 9–23 full defects (350g)' };
+      if (t <= 86)            return { g:'Below Standard', c:'#EA580C', d:'SCA Below Standard — 24–86 full defects (350g)' };
+      return                         { g:'Off Grade',      c:'#DC2626', d:'SCA Off Grade — >86 full defects (350g)' };
+    },
+  },
+
+  sni: {
+    sample: 300,
+    scoreUnit: 'nilai cacat',
+    ka: [0, 12.5],
+    primary: [
+      { id:'hitam_penuh',    name:'Hitam Penuh',          en:'Full Black',       val:1.0 },
+      { id:'hitam_sebagian', name:'Hitam Sebagian (>½)',  en:'Partial Black',    val:0.5 },
+      { id:'asam_penuh',     name:'Asam Penuh',           en:'Full Sour',        val:1.0 },
+      { id:'asam_sebagian',  name:'Asam Sebagian',        en:'Partial Sour',     val:0.5 },
+      { id:'gelondong',      name:'Gelondong Kering',     en:'Dried Cherry',     val:1.0 },
+      { id:'jamur_sni',      name:'Jamur',                en:'Fungal Damage',    val:0.5 },
+      { id:'berlubang_gt1',  name:'Berlubang >1 lubang',  en:'Severe Insect',    val:0.5 },
+      { id:'benda_asing',    name:'Benda Asing / Ranting',en:'Foreign Matter',   val:5.0 },
+    ],
+    secondary: [
+      { id:'berlubang_1',    name:'Berlubang 1 lubang',   en:'Slight Insect',    val:0.1 },
+      { id:'muda_sni',       name:'Biji Muda',            en:'Immature',         val:0.2 },
+      { id:'pecah_sni',      name:'Biji Pecah',           en:'Broken',           val:0.1 },
+      { id:'tanduk_sni',     name:'Kulit Tanduk',         en:'Parchment',        val:0.5 },
+      { id:'cangkang_sni',   name:'Cangkang',             en:'Shell',            val:0.2 },
+    ],
+    grade(t) {
+      if (t <= 11)  return { g:'Mutu 1',  c:'#16A34A', d:'SNI Mutu 1 — nilai cacat ≤11 per 300g' };
+      if (t <= 25)  return { g:'Mutu 2',  c:'#65A30D', d:'SNI Mutu 2 — nilai cacat 12–25 per 300g' };
+      if (t <= 44)  return { g:'Mutu 3',  c:'#CA8A04', d:'SNI Mutu 3 — nilai cacat 26–44 per 300g' };
+      if (t <= 60)  return { g:'Mutu 4a', c:'#EA580C', d:'SNI Mutu 4a — nilai cacat 45–60 per 300g' };
+      if (t <= 80)  return { g:'Mutu 4b', c:'#DC2626', d:'SNI Mutu 4b — nilai cacat 61–80 per 300g' };
+      if (t <= 150) return { g:'Mutu 5',  c:'#B91C1C', d:'SNI Mutu 5 — nilai cacat 81–150 per 300g' };
+      return               { g:'Mutu 6',  c:'#7F1D1D', d:'SNI Mutu 6 — nilai cacat >150 per 300g' };
+    },
+  },
+};
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+
+let std = 'sca';
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+
+function init() {
+  const sel = document.getElementById('tahun');
+  const now = new Date().getFullYear();
+  for (let y = now; y >= now - 10; y--) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    sel.appendChild(o);
+  }
+  buildTables();
+  renderHistory();
+}
+
+// ═══════════════════════════════════════════
+// STANDARD SWITCH
+// ═══════════════════════════════════════════
+
+function setStd(s) {
+  std = s;
+  document.querySelectorAll('.toggle button').forEach((b, i) => {
+    b.classList.toggle('on', (s === 'sca' && i === 0) || (s === 'sni' && i === 1));
+  });
+  buildTables();
+  calc();
+}
+
+// ═══════════════════════════════════════════
+// BUILD DEFECT TABLES
+// ═══════════════════════════════════════════
+
+function buildTables() {
+  const d = DEFS[std];
+  const isSCA = std === 'sca';
+
+  document.getElementById('smpl-lbl').textContent  = `Sampel ${d.sample}g`;
+  document.getElementById('bdg-p').textContent     = isSCA ? 'Cat. 1' : 'Primer';
+  document.getElementById('bdg-s').textContent     = isSCA ? 'Cat. 2' : 'Sekunder';
+  document.getElementById('stl-p').textContent     = isSCA ? 'Total Cacat Primer' : 'Total Nilai Primer';
+  document.getElementById('stl-s').textContent     = isSCA ? 'Total Cacat Sekunder' : 'Total Nilai Sekunder';
+  document.getElementById('r-unit').textContent    = d.scoreUnit;
+  document.getElementById('wt-sample').value       = d.sample;
+
+  fillTbody('tb-p', d.primary,   isSCA, false);
+  fillTbody('tb-s', d.secondary, isSCA, true);
+}
+
+function fillTbody(id, rows, isSCA, floorMode) {
+  document.getElementById(id).innerHTML = rows.map(r => {
+    const rule = isSCA
+      ? (r.div === 1 ? '1 biji = 1 defect' : `${r.div} biji = 1 defect${floorMode ? ' (bulat bawah)' : ''}`)
+      : `× ${r.val.toFixed(1)} per biji`;
+    return `<tr>
+      <td>
+        <div class="dn">${r.name}</div>
+        <div class="de">${r.en} · <span class="dr">${rule}</span></div>
+      </td>
+      <td style="text-align:center">
+        <input class="dcnt" type="number" id="d_${r.id}" value="0" min="0" oninput="calc()">
+      </td>
+      <td><div class="dv" id="v_${r.id}">—</div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// CALCULATE
+// ═══════════════════════════════════════════
+
+function gv(id) { return Math.max(0, parseInt(document.getElementById(id)?.value) || 0); }
+
+function calcGroup(rows, isSCA, floorMode) {
+  let total = 0;
+  rows.forEach(r => {
+    const cnt = gv(`d_${r.id}`);
+    let v;
+    if (isSCA) {
+      v = floorMode ? Math.floor(cnt / r.div) : cnt / r.div;
+    } else {
+      v = cnt * r.val;
+    }
+    total += v;
+    const el = document.getElementById(`v_${r.id}`);
+    const dec = isSCA && floorMode ? 0 : 2;
+    if (el) { el.textContent = v > 0 ? v.toFixed(dec) : '—'; el.className = `dv${v > 0 ? ' on' : ''}`; }
+  });
+  return total;
+}
+
+function calc() {
+  const d = DEFS[std];
+  const isSCA = std === 'sca';
+
+  const pT = calcGroup(d.primary,   isSCA, false);
+  const sT = calcGroup(d.secondary, isSCA, true);
+  const tot = pT + sT;
+
+  document.getElementById('stv-p').textContent = pT.toFixed(2);
+  document.getElementById('stv-s').textContent = isSCA ? sT.toFixed(0) : sT.toFixed(2);
+  document.getElementById('r-tot').textContent = tot.toFixed(2);
+
+  // Grade
+  const res = isSCA ? d.grade(pT, tot) : d.grade(tot);
+  const gEl  = document.getElementById('r-grade');
+  const gb   = document.getElementById('grade-box');
+  const desc = document.getElementById('r-desc');
+
+  if (tot === 0) {
+    gEl.textContent = '—'; gEl.style.color = 'var(--mut)';
+    gb.style.borderColor = 'var(--bdr)';
+    desc.textContent = 'Belum ada data cacat';
+  } else {
+    gEl.textContent = res.g; gEl.style.color = res.c;
+    gb.style.borderColor = res.c + '55';
+    desc.textContent = res.d;
+  }
+
+  // Kadar air check
+  const ka  = parseFloat(document.getElementById('ka').value);
+  const note = document.getElementById('ka-note');
+  if (!isNaN(ka) && ka > 0) {
+    const [lo, hi] = d.ka;
+    if (ka < lo || ka > hi) {
+      note.textContent = `⚠ Kadar air ${ka}% di luar rentang ${lo}–${hi}% — periksa sebelum kirim ke buyer`;
+      note.className = 'ka-note warn';
+    } else {
+      note.textContent = `✓ Kadar air ${ka}% dalam rentang ${lo}–${hi}%`;
+      note.className = 'ka-note ok';
+    }
+  } else {
+    note.className = 'ka-note';
+  }
+
+  // Water activity check
+  const aw     = parseFloat(document.getElementById('aw').value);
+  const awNote = document.getElementById('aw-note');
+  const AW_LO = 0.55, AW_HI = 0.65;
+  if (!isNaN(aw) && aw > 0) {
+    if (aw > AW_HI) {
+      awNote.textContent = `⚠ Aw ${aw.toFixed(2)} di atas ${AW_HI} — risiko jamur/OTA meningkat, segera keringkan/simpan ulang`;
+      awNote.className = 'ka-note warn';
+    } else if (aw < AW_LO) {
+      awNote.textContent = `⚠ Aw ${aw.toFixed(2)} di bawah ${AW_LO} — biji terlalu kering, cek risiko getas & penurunan cup quality`;
+      awNote.className = 'ka-note warn';
+    } else {
+      awNote.textContent = `✓ Aw ${aw.toFixed(2)} dalam rentang aman ${AW_LO}–${AW_HI}`;
+      awNote.className = 'ka-note ok';
+    }
+  } else {
+    awNote.className = 'ka-note';
+  }
+
+  // Trase berat sampel: Berat Bersih = Berat Sampel - Berat Cacat
+  const wtSample = parseFloat(document.getElementById('wt-sample').value) || 0;
+  const wtDefect = parseFloat(document.getElementById('wt-defect').value) || 0;
+  const wtCleanEl = document.getElementById('wt-clean');
+  const wtPctEl   = document.getElementById('wt-pct');
+  if (wtSample > 0) {
+    const clean = Math.max(0, wtSample - wtDefect);
+    const pct = (wtDefect / wtSample) * 100;
+    wtCleanEl.textContent = `${clean.toFixed(1)}g`;
+    wtPctEl.textContent   = `${pct.toFixed(2)}%`;
+  } else {
+    wtCleanEl.textContent = '—';
+    wtPctEl.textContent   = '—';
+  }
+}
+
+// ═══════════════════════════════════════════
+// SAVE
+// ═══════════════════════════════════════════
+
+function snapshot() {
+  const d = DEFS[std];
+  const isSCA = std === 'sca';
+  let pT = 0, sT = 0;
+
+  d.primary.forEach(r => {
+    pT += isSCA ? gv(`d_${r.id}`) / r.div : gv(`d_${r.id}`) * r.val;
+  });
+  d.secondary.forEach(r => {
+    sT += isSCA ? Math.floor(gv(`d_${r.id}`) / r.div) : gv(`d_${r.id}`) * r.val;
+  });
+
+  const tot = pT + sT;
+  const res = isSCA ? d.grade(pT, tot) : d.grade(tot);
+
+  const counts = {};
+  [...d.primary, ...d.secondary].forEach(r => { counts[r.id] = gv(`d_${r.id}`); });
+
+  const wtSample = parseFloat(document.getElementById('wt-sample').value) || 0;
+  const wtDefect = parseFloat(document.getElementById('wt-defect').value) || 0;
+  const wtClean  = wtSample > 0 ? Math.max(0, wtSample - wtDefect) : 0;
+  const wtPct    = wtSample > 0 ? (wtDefect / wtSample) * 100 : 0;
+
+  return {
+    id: Date.now(),
+    ts: new Date().toISOString(),
+    std: std.toUpperCase(),
+    mitra:  document.getElementById('mitra').value.trim(),
+    origin: document.getElementById('origin').value,
+    jenis:  document.getElementById('jenis').value,
+    tahun:  document.getElementById('tahun').value,
+    pasca:  document.getElementById('pasca').value,
+    ka:     document.getElementById('ka').value,
+    aw:     document.getElementById('aw').value,
+    wtSample: wtSample ? wtSample.toFixed(1) : '',
+    wtDefect: wtDefect ? wtDefect.toFixed(1) : '',
+    wtClean:  wtSample ? wtClean.toFixed(1) : '',
+    wtPct:    wtSample ? wtPct.toFixed(2) : '',
+    pTotal: pT.toFixed(2),
+    sTotal: sT.toFixed(2),
+    total:  tot.toFixed(2),
+    grade:  res.g,
+    color:  res.c,
+    counts,
+  };
+}
+
+function save() {
+  const data = snapshot();
+  if (!data.mitra && !data.origin) {
+    alert('Isi minimal Nama Mitra atau Origin sebelum menyimpan.');
+    return;
+  }
+  const hist = getHist();
+  hist.unshift(data);
+  localStorage.setItem('ont_qc_v1', JSON.stringify(hist));
+  renderHistory();
+  showTab('hist');
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '✓ Tersimpan!';
+  setTimeout(() => { btn.textContent = 'Simpan ke Riwayat'; }, 1600);
+}
+
+// ═══════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════
+
+function getHist() {
+  try { return JSON.parse(localStorage.getItem('ont_qc_v1') || '[]'); }
+  catch { return []; }
+}
+
+function renderHistory() {
+  const hist = getHist();
+  const list = document.getElementById('hist-list');
+  const acts = document.getElementById('hist-acts');
+  const btn  = document.getElementById('tab-hist-btn');
+
+  btn.textContent = hist.length ? `Riwayat (${hist.length})` : 'Riwayat';
+
+  if (!hist.length) {
+    list.innerHTML = '<div class="hempty">Belum ada data tersimpan.<br>Isi form dan klik "Simpan ke Riwayat".</div>';
+    acts.style.display = 'none';
+    return;
+  }
+
+  acts.style.display = 'flex';
+
+  list.innerHTML = hist.map(h => {
+    const dt = new Date(h.ts);
+    const ds = dt.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    const ts = dt.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    return `<div class="hi">
+      <div class="hm">
+        <div class="hstd">${h.std} · ${ds} ${ts}</div>
+        <div class="hmain">${h.mitra || '—'} &nbsp;·&nbsp; ${h.origin || '—'}</div>
+        <div class="hdet">${h.jenis || '—'} · ${h.pasca || '—'} · Panen ${h.tahun || '—'} · KA ${h.ka || '—'}% · Aw ${h.aw || '—'}</div>
+        ${h.wtSample ? `<div class="hdet">Trase: ${h.wtSample}g − ${h.wtDefect || 0}g cacat = ${h.wtClean}g bersih (${h.wtPct}%)</div>` : ''}
+        <div class="hacc">Total defect: ${h.total}</div>
+      </div>
+      <span class="hbdg" style="background:${h.color}1A;color:${h.color};border:1px solid ${h.color}44">${h.grade}</span>
+      <button class="hdel" onclick="delEntry(${h.id})" title="Hapus">×</button>
+    </div>`;
+  }).join('');
+}
+
+function delEntry(id) {
+  if (!confirm('Hapus data ini?')) return;
+  localStorage.setItem('ont_qc_v1', JSON.stringify(getHist().filter(h => h.id !== id)));
+  renderHistory();
+}
+
+function clearAll() {
+  if (!confirm('Hapus SELURUH riwayat? Tidak bisa dibatalkan.')) return;
+  localStorage.removeItem('ont_qc_v1');
+  renderHistory();
+}
+
+// ═══════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════
+
+function exportCSV() {
+  const hist = getHist();
+  if (!hist.length) return;
+
+  const headers = [
+    'Tanggal', 'Standar', 'Nama Mitra', 'Origin', 'Jenis Kopi',
+    'Tahun Panen', 'Pascapanen', 'Kadar Air (%)', 'Water Activity (Aw)',
+    'Berat Sampel (g)', 'Berat Cacat (g)', 'Berat Bersih (g)', '% Cacat Berat',
+    'Total Primer', 'Total Sekunder', 'Total Defect', 'Grade'
+  ];
+
+  const rows = hist.map(h => [
+    h.ts, h.std, h.mitra, h.origin, h.jenis,
+    h.tahun, h.pasca, h.ka, h.aw,
+    h.wtSample, h.wtDefect, h.wtClean, h.wtPct,
+    h.pTotal, h.sTotal, h.total, h.grade
+  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
+
+  const csv  = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const url  = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `ONT_QC_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+
+function showTab(t) {
+  document.getElementById('panel-form').style.display = t === 'form' ? '' : 'none';
+  document.getElementById('panel-hist').style.display = t === 'hist' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach((b, i) => {
+    b.classList.toggle('on', (i === 0 && t === 'form') || (i === 1 && t === 'hist'));
+  });
+}
+
+// ═══════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════
+
+function resetForm() {
+  if (!confirm('Reset semua input form?')) return;
+  ['mitra', 'origin', 'jenis', 'pasca', 'ka', 'aw', 'wt-defect'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('wt-sample').value = DEFS[std].sample;
+  document.getElementById('tahun').selectedIndex = 0;
+  document.querySelectorAll('.dcnt').forEach(el => el.value = 0);
+  calc();
+}
+
+// ═══════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
